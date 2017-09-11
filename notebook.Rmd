@@ -1,5 +1,5 @@
 ---
-title: "Cpastoen Project for Data Science Specialization"
+title: "Capstone Project for Data Science Specialization"
 output: html_notebook
 ---
 
@@ -16,19 +16,46 @@ output: html_notebook
          unzip("./data/swiftkey.zip")
          }       
 ```
-# Loadying and tyding the data in R
-reference [Text Mining in R](http://tidytextmining.com/tidytext.html#contrasting-tidy-text-with-other-data-structures)
+# Loading and tyding the data in R
+
 ```{r, message=TRUE, warning=TRUE, include=FALSE}
         library(dplyr)
         library(tidytext)
-        t <- readLines("./data/final/en_US/en_US.blogs.txt")
-        text_df <- data_frame(line=1:length(t),text=t)
-        text_df %>%
-                unnest_tokens(word,text)
+        blogs <- readLines("./data/final/en_US/en_US.blogs.txt")
+        news <- readLines("./data/final/en_US/en_US.news.txt")
+        twitter <- readLines("./data/final/en_US/en_US.twitter.txt")
+##Creating a sample corpus to try things out
+blogs_df <- data_frame(corp="blogs",line=1:1000,text=sample(blogs,1000))
+news_df <- data_frame(corp="news",line=1:1000,text=sample(news,1000))
+twitter_df <- data_frame(corp="twitter",line=1:1000,text=sample(twitter,1000))
+sample_corp <- rbind(blogs_df,news_df,twitter_df)
+###
+
+```
+# Using tidy to make it nice
+reference ["Text mining with R"](http://tidytextmining.com)
+```{r}
+
 ```
 We can also make it a corpus in tm
 ``` {r}
         library(tm)
         mycorp <- Corpus(DirSource("./data/final/en_US"),readerControl =list(reader= readPlain, language="en_US") )
         summary(mycorp)
+```
+# Now some cleanup
+## Cleaning up punctuation (easy enough)
+```{r }
+#Removing punctuation
+corp <- tm_map(mycorp,removePunctuation)
+corp <- tm_map(corp,content_transformer(tolower))
+corp <- tm_map(corp,removeNumbers)
+corp <- tm_map(corp,stripWhitespace)
+```
+## Removing profanity (less obvious)
+source for list of word - a [gist](https://gist.github.com/ryanlewis/a37739d710ccdb4b406d)
+```{r}
+#Load a list of swear words (based on google banned workds)
+swears <- readLines("./data/google_twunter_lol copy.txt")
+
 ```
