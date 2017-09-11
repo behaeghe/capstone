@@ -11,5 +11,24 @@ output: html_notebook
  if   (!dir.exists("./data")) {
       dir.create("./data")   
  }
- if(!file.exists("./data/swiftkey.zip")){GET(url,write_disk("./data/swiftkey.zip",overwrite = TRUE))}       
+ if(!file.exists("./data/swiftkey.zip")){
+         GET(url,write_disk("./data/swiftkey.zip",overwrite = TRUE))
+         unzip("./data/swiftkey.zip")
+         }       
+```
+# Loadying and tyding the data in R
+reference [Text Mining in R](http://tidytextmining.com/tidytext.html#contrasting-tidy-text-with-other-data-structures)
+```{r, message=TRUE, warning=TRUE, include=FALSE}
+        library(dplyr)
+        library(tidytext)
+        t <- readLines("./data/final/en_US/en_US.blogs.txt")
+        text_df <- data_frame(line=1:length(t),text=t)
+        text_df %>%
+                unnest_tokens(word,text)
+```
+We can also make it a corpus in tm
+``` {r}
+        library(tm)
+        mycorp <- Corpus(DirSource("./data/final/en_US"),readerControl =list(reader= readPlain, language="en_US") )
+        summary(mycorp)
 ```
