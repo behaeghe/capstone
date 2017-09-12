@@ -35,9 +35,9 @@ sample_corp <- rbind(blogs_df,news_df,twitter_df)
 ###
 
 ```
-# Using tidy to make it nice
-reference ["Text mining with R"](http://tidytextmining.com)
-```{r}
+# Using tidy to make it nice: ["Text mining with R"](http://tidytextmining.com)
+## Loading data, pre-processing and creating tidy text data set with word counts
+```{r loading data, echo=TRUE, message=TRUE}
 library(dplyr)
 library(tidytext)
 library(tm)
@@ -58,35 +58,24 @@ corp_words <- sample_corp %>%
         group_by(word,corp) %>%
         summarize(n=n()) %>%
         ungroup()
+```
+## Exploring our text data set
+        TODO:  
+         * Is it clean enough ? (should run some tests with regexp on pucntuation, symbols, numbers etc..)
+         * Look at content through a simple word cloud
+         * do some tf-idf explorations
+```{r calculatiing term frequency} 
 total_words <- corp_words %>%
                 group_by(corp) %>%
                 summarize(total=sum(n))
-#Renoving stopwords
-#tidy_corp <- tidy_corp %>% 
-#        anti_join(stop_words)
 
+corp_words <- left_join(corp_words,total_words)
 
+##Let's graph what we have so far
 
-```
-We can also make it a corpus in tm
-``` {r}
-        library(tm)
-        mycorp <- Corpus(DirSource("./data/final/en_US"),readerControl =list(reader= readPlain, language="en_US") )
-        summary(mycorp)
-```
-# Now some cleanup
-## Cleaning up punctuation (easy enough)
-```{r }
-#Removing punctuation
-corp <- tm_map(mycorp,removePunctuation)
-corp <- tm_map(corp,content_transformer(tolower))
-corp <- tm_map(corp,removeNumbers)
-corp <- tm_map(corp,stripWhitespace)
-```
-## Removing profanity (less obvious)
-source for list of word - a [gist](https://gist.github.com/ryanlewis/a37739d710ccdb4b406d)
-```{r}
-#Load a list of swear words (based on google banned workds)
-swears <- readLines("./data/google_twunter_lol copy.txt")
+g <- ggplot(corp_words,aes(n/total, fill=corp))
+g <- g + geom_histogram(show.legend=FALSE) + xlim(NA,0.0009)
+g <- g + facet_wrap(~corp,ncol=2, scales= "free_y")
 
 ```
+
