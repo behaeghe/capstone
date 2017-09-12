@@ -1,6 +1,8 @@
 ---
 title: "Capstone Project for Data Science Specialization"
-output: html_notebook
+output:
+  html_document: default
+  html_notebook: default
 date: "Sep 11 2017"
 ---
 
@@ -42,6 +44,7 @@ sample_corp <- rbind(blogs_df,news_df,twitter_df)
 library(dplyr)
 library(tidytext)
 library(tm)
+library(ggplot2)
 # Maek it tidy, one word per row
 # Some preprocessing
 sample_corp$text <- tolower(sample_corp$text)
@@ -71,12 +74,28 @@ total_words <- corp_words %>%
                 summarize(total=sum(n))
 
 corp_words <- left_join(corp_words,total_words)
+tf_idf <- corp_words %>%
+        bind_tf_idf(word,corp,n) %>%
+        arrange(desc(tf_idf))
 
+data(stop_words)
+tf_idf_no_stop <- tf_idf %>% anti_join(stop_words)
+library(wordcloud)
+pal <- brewer.pal(5,"Greys")
+wordcloud(tf_idf_no_stop[tf_idf_no_stop$corp=="blogs",]$word,
+          tf_idf_no_stop[tf_idf_no_stop$corp=="blogs",]$tf,
+          c(8,.5),
+          max.words=30,
+          colors=pal)
+```
+
+```{r some visual analysis}
 ##Let's graph what we have so far
 
 g <- ggplot(corp_words,aes(n/total, fill=corp))
 g <- g + geom_histogram(show.legend=FALSE) + xlim(NA,0.0009)
 g <- g + facet_wrap(~corp,ncol=2, scales= "free_y")
+g
 
 ```
 
