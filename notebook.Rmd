@@ -1,6 +1,7 @@
 ---
 title: "Capstone Project for Data Science Specialization"
 output: html_notebook
+date: "Sep 11 2017"
 ---
 
 # Acquiring data
