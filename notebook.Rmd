@@ -24,10 +24,13 @@ output: html_notebook
         blogs <- readLines("./data/final/en_US/en_US.blogs.txt")
         news <- readLines("./data/final/en_US/en_US.news.txt")
         twitter <- readLines("./data/final/en_US/en_US.twitter.txt")
+        swears <- as.data.frame(readLines("./data/profanity_google.txt"))
+        colnames(swears) <- c("text")
 ##Creating a sample corpus to try things out
 blogs_df <- data_frame(corp="blogs",line=1:1000,text=sample(blogs,1000))
 news_df <- data_frame(corp="news",line=1:1000,text=sample(news,1000))
 twitter_df <- data_frame(corp="twitter",line=1:1000,text=sample(twitter,1000))
+
 sample_corp <- rbind(blogs_df,news_df,twitter_df)
 ###
 
@@ -35,6 +38,34 @@ sample_corp <- rbind(blogs_df,news_df,twitter_df)
 # Using tidy to make it nice
 reference ["Text mining with R"](http://tidytextmining.com)
 ```{r}
+library(dplyr)
+library(tidytext)
+library(tm)
+# Maek it tidy, one word per row
+# Some preprocessing
+sample_corp$text <- tolower(sample_corp$text)
+sample_corp$text <- removeNumbers(sample_corp$text) #if package not available, could use a regexp
+sample_corp$text <- removePunctuation(sample_corp$text,preserve_intra_word_dashes = TRUE)
+## Prepping swear list
+tidy_swears <- as_tibble(as.character(swears))
+colnames(tidy_swears) <- "word"
+tidy_swears <- as_tibble(as.character(swears))
+colnames(tidy_swears) <- "word"
+##
+corp_words <- sample_corp %>%
+        unnest_tokens(word,text) %>%
+        anti_join(tidy_swears) %>%
+        group_by(word,corp) %>%
+        summarize(n=n()) %>%
+        ungroup()
+total_words <- corp_words %>%
+                group_by(corp) %>%
+                summarize(total=sum(n))
+#Renoving stopwords
+#tidy_corp <- tidy_corp %>% 
+#        anti_join(stop_words)
+
+
 
 ```
 We can also make it a corpus in tm
