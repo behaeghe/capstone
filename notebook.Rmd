@@ -61,6 +61,15 @@ corp_words <- sample_corp %>%
 total_words <- corp_words %>%
                 group_by(corp) %>%
                 summarize(total=sum(n))
+
+corp_words <- left_join(corp_words,total_words)
+
+##Let's graph what we have so far
+
+g <- ggplot(corp_words,aes(n/total, fill=corp))
+g <- g + geom_histogram(show.legend=FALSE) + xlim(NA,0.0009)
+g <- g + facet_wrap(~corp,ncol=2, scales= "free_y")
+
 #Renoving stopwords
 #tidy_corp <- tidy_corp %>% 
 #        anti_join(stop_words)
