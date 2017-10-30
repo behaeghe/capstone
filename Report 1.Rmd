@@ -1,0 +1,108 @@
+---
+title: "Coursera Capstone Exploratory Data Analysis - Report #1"
+author: "JRB"
+date: "October 30, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse) ##Because the universe is a better place with tidyverse
+library(tidytext)
+library(tm)
+```
+
+##Introduction
+
+##Data Acquistion  
+
+We are downloading and unziping the zip file provided by Coursera. We are also downloading a list of [profanities]("https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en") to be used later to clean up the data set. We then proceed to create a data frame corp, which contains one observation per line of text and each observation as three variables:  
+
+*corp: the origin of the text (twitter, news or blogs)  
+*line: line number   
+*text: the line of text itself from the text    
+
+At the end of data acquisition we have a single data frame ```corp``` that would be used to performed our exploratory data analysis.
+```{r Data Aquisition, echo=TRUE, warning=FALSE}
+        library(httr)
+        url = "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+ if   (!dir.exists("./data")) {
+      dir.create("./data")   
+ }
+ if(!file.exists("./data/swiftkey.zip")){
+         GET(url,write_disk("./data/swiftkey.zip",overwrite = TRUE))
+         unzip("./data/swiftkey.zip")
+ }  
+if(!file.exists("./data/profanity.txt")) {
+        url = "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en"
+        GET(url,write_disk("./data/profanity.txt"))
+}
+        
+
+blogs <- readLines("./data/final/en_US/en_US.blogs.txt")
+news <- readLines("./data/final/en_US/en_US.news.txt")
+twitter <- readLines("./data/final/en_US/en_US.twitter.txt")
+## This is is our "profanity" list
+swears <- as.data.frame(readLines("./data/profanity.txt"))
+ ## Prepping our list of swear words
+swears <- as_tibble(as.character(swears))
+colnames(swears) <- "word"
+##Creating a corpus for our exploratory data analysis
+blogs_df <- data_frame(corp="blogs",line=1:length(blogs),text=blogs)
+news_df <- data_frame(corp="news",line=1:length(news),text=news)
+twitter_df <- data_frame(corp="twitter",line=1:length(twitter),text=twitter)
+#corp <- rbind(blogs_df,news_df,twitter_df)
+###
+```
+
+##Data Preparation
+
+A few simple steps to prepare the data for analysis. We will first tokeninzed the lines by word into a tidy data set (one observation by word) eliminate any profanity and all english stop words.
+```{r data preparation}
+#Step 1: subset for twitter
+corp <- twitter_df
+#Step 2: normalizing case, removing numbers and punctuation marks
+corp$text <- tolower(corp$text)
+corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
+corp$text <- gsub("@\\w+", "", corp$text) #Remoeve any @
+corp$text <- gsub("[[:punct:]]", "", corp$text) # remove punctuation
+corp$text <- gsub("[[:digit:]]", "", corp$text) # remove numbers
+#Step 5: let's make this corpus tidy and remove stop words and profanity
+
+data(stop_words)
+#Step 4: removing stop words (a, the, etc...) and profanity
+tidy_corp <- corp %>%
+                unnest_tokens(word,text,token="words") %>%
+                anti_join(swears) %>%
+                anti_join(stop_words) 
+                
+```
+
+###
+##Exploratory Data Analysis
+###Part 1: 1-gram analysis
+```{r }
+tidy_corp %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 30000) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
+````
+#### if-tdf
+
+#### World cloud
+
+#### Note on non english words
+
+###Part 2: n-gram analysis
+
+####2-Grams
+
+####3-Grams
+
+###Conclusions and Next Steps
+#References:
+[How to clean twitter data in r](http://technokarak.com/how-to-clean-the-twitter-data-using-r-twitter-mining-tutorial.html)

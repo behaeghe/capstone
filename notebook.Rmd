@@ -1,8 +1,8 @@
 ---
 title: "Capstone Project for Data Science Specialization"
 output:
+ 
   html_document: default
-  html_notebook: default
 date: "Sep 11 2017"
 ---
 
@@ -21,18 +21,20 @@ date: "Sep 11 2017"
 ```
 # Loading and tyding the data in R
 
-```{r, message=TRUE, warning=TRUE, include=FALSE}
+```{r creating corpa, message=TRUE, warning=TRUE, include=FALSE}
         library(dplyr)
         library(tidytext)
         blogs <- readLines("./data/final/en_US/en_US.blogs.txt")
         news <- readLines("./data/final/en_US/en_US.news.txt")
         twitter <- readLines("./data/final/en_US/en_US.twitter.txt")
-        swears <- as.data.frame(readLines("./data/profanity_google.txt"))
+        url = "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en"
+        GET(url,write_disk("./data/profanity.txt"))
+        swears <- as.data.frame(readLines("./data/profanity.txt"))
         colnames(swears) <- c("text")
 ##Creating a sample corpus to try things out
-blogs_df <- data_frame(corp="blogs",line=1:1000,text=sample(blogs,1000))
-news_df <- data_frame(corp="news",line=1:1000,text=sample(news,1000))
-twitter_df <- data_frame(corp="twitter",line=1:1000,text=sample(twitter,1000))
+blogs_df <- data_frame(corp="blogs",line=1:length(blogs),text=blogs)
+news_df <- data_frame(corp="news",line=1:length(news),text=news)
+twitter_df <- data_frame(corp="twitter",line=1:length(twitter),text=twitter)
 
 sample_corp <- rbind(blogs_df,news_df,twitter_df)
 ###
@@ -47,6 +49,8 @@ library(tm)
 library(ggplot2)
 # Maek it tidy, one word per row
 # Some preprocessing
+#subsetting for twitter
+sample_corp <- subset(sample_corp,corp=="twitter")
 sample_corp$text <- tolower(sample_corp$text)
 sample_corp$text <- removeNumbers(sample_corp$text) #if package not available, could use a regexp
 sample_corp$text <- removePunctuation(sample_corp$text,preserve_intra_word_dashes = TRUE)
@@ -61,9 +65,24 @@ corp_words <- sample_corp %>%
         anti_join(tidy_swears) %>%
         group_by(word,corp) %>%
         summarize(n=n()) %>%
-        ungroup()
+        ungroup() %>%
+        arrange(desc(n))
 ```
 ## Exploring our text data set
+The first step in building a predictive model for text is understanding the distribution and relationship between the words, tokens, and phrases in the text. The goal of this task is to understand the basic relationships you observe in the data and prepare to build your first linguistic models.
+
+Tasks to accomplish
+
+Exploratory analysis - perform a thorough exploratory analysis of the data, understanding the distribution of words and relationship between the words in the corpora.
+Understand frequencies of words and word pairs - build figures and tables to understand variation in the frequencies of words and word pairs in the data.
+Questions to consider
+
+Some words are more frequent than others - what are the distributions of word frequencies?
+What are the frequencies of 2-grams and 3-grams in the dataset?
+How many unique words do you need in a frequency sorted dictionary to cover 50% of all word instances in the language? 90%?
+How do you evaluate how many of the words come from foreign languages?
+Can you think of a way to increase the coverage -- identifying words that may not be in the corpora or using a smaller number of words in the dictionary to cover the same number of phrases?
+       
         TODO:  
          * Is it clean enough ? (should run some tests with regexp on pucntuation, symbols, numbers etc..)
          * Look at content through a simple word cloud
@@ -71,12 +90,10 @@ corp_words <- sample_corp %>%
 ```{r calculatiing term frequency} 
 total_words <- corp_words %>%
                 group_by(corp) %>%
-                summarize(total=sum(n))
+                summarize(total=sum(n)) %>%
+                arrange(total)
 
 corp_words <- left_join(corp_words,total_words)
-tf_idf <- corp_words %>%
-        bind_tf_idf(word,corp,n) %>%
-        arrange(desc(tf_idf))
 
 data(stop_words)
 tf_idf_no_stop <- tf_idf %>% anti_join(stop_words)
