@@ -106,7 +106,7 @@ Word cloud showing the relative importance of the 150 most frequent words in the
 ```{r word cloud}
 library(wordcloud)
 freq_word <- bind_tf_idf(count_word,word,orig,n)
-wordcloud(freq_word$word,freq=freq_word$tf,max.words=150,colors=brewer.pal(9,"RdPu"))
+wordcloud(freq_word$word,freq=freq_word$tf,max.words=125,colors=brewer.pal(9,"RdPu"))
 ```
 
 #### Note on non english words
@@ -114,7 +114,12 @@ wordcloud(freq_word$word,freq=freq_word$tf,max.words=150,colors=brewer.pal(9,"Rd
 ###Part 2: n-gram analysis
 
 ####2-Grams
+```{r 2-grams}
+ corp_bigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=2)
+corp_bigram <- corp_bigram %>%
+          separate(ngram,c("word1","word2"),sep=" ")
 
+```
 ####3-Grams
 
 ###Conclusions and Next Steps
