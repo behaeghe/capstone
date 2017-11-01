@@ -39,9 +39,9 @@ if(!file.exists("./data/profanity.txt")) {
 }
         
 
-blogs <- readLines("./data/final/en_US/en_US.blogs.txt")
-news <- readLines("./data/final/en_US/en_US.news.txt")
-twitter <- readLines("./data/final/en_US/en_US.twitter.txt")
+blogs <- readLines("./final/en_US/en_US.blogs.txt")
+news <- readLines("./final/en_US/en_US.news.txt")
+twitter <- readLines("./final/en_US/en_US.twitter.txt")
 ## This is is our "profanity" list
 swears <- as.data.frame(readLines("./data/profanity.txt"))
  ## Prepping our list of swear words
@@ -60,12 +60,12 @@ twitter_df <- data_frame(corp="twitter",line=1:length(twitter),text=twitter)
 A few simple steps to prepare the data for analysis. We will first tokeninzed the lines by word into a tidy data set (one observation by word) eliminate any profanity and all english stop words.
 ```{r data preparation}
 #Step 1: subset for twitter
-corp <- twitter_df
+corp <- sample_n(twitter_df,1000)
 #Step 2: normalizing case, removing numbers and punctuation marks
 corp$text <- tolower(corp$text)
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
 corp$text <- gsub("@\\w+", "", corp$text) #Remoeve any @
-corp$text <- gsub("[[:punct:]]", "", corp$text) # remove punctuation
+#corp$text <- gsub("[[:punct:]]", "", corp$text) # remove punctuation
 corp$text <- gsub("[[:digit:]]", "", corp$text) # remove numbers
 #Step 5: let's make this corpus tidy and remove stop words and profanity
 
@@ -82,12 +82,13 @@ tidy_corp <- corp %>%
 ##Exploratory Data Analysis
 ###Part 1: 1-gram analysis
 ```{r }
+myfilter = 10
 tidy_corp %>%
   count(word, sort = TRUE) %>%
-  filter(n > 30000) %>%
+  filter(n > myfilter) %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(word, n)) +
-  geom_col() +
+  geom_bar(stat="identity") +
   xlab(NULL) +
   coord_flip()
 ````
