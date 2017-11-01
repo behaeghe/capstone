@@ -81,7 +81,7 @@ tidy_corp <- corp %>%
 ###
 ##Exploratory Data Analysis
 ###Part 1: 1-gram analysis
-```{r }
+```{r word count plot}
 myfilter = 10
 tidy_corp %>%
   count(word, sort = TRUE) %>%
@@ -91,10 +91,23 @@ tidy_corp %>%
   geom_bar(stat="identity") +
   xlab(NULL) +
   coord_flip()
-````
+```
 #### if-tdf
-
-#### World cloud
+``` {r word frequency}
+count_word <- tidy_corp %>% 
+        count(word, sort=TRUE) %>%
+      ungroup()
+total_words <- sum(count_word$n)
+count_word <- count_word %>%
+  mutate(orig =  "twitter")
+```
+#### Word cloud
+Word cloud showing the relative importance of the 150 most frequent words in the twiter corpus
+```{r word cloud}
+library(wordcloud)
+freq_word <- bind_tf_idf(count_word,word,orig,n)
+wordcloud(freq_word$word,freq=freq_word$tf,max.words=150,colors=brewer.pal(9,"RdPu"))
+```
 
 #### Note on non english words
 
