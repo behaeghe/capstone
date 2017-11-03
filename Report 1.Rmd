@@ -1,35 +1,47 @@
 ---
-title: "Coursera Capstone Exploratory Data Analysis - Report #1"
+title: 'Coursera Capstone Exploratory Data Analysis - Report #1'
 author: "JRB"
 date: "October 30, 2017"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(cache = TRUE)
+knitr::opts_chunk$set(tidy = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(fig.align = "center")
+
 library(tidyverse) ##Because the universe is a better place with tidyverse
 library(tidytext)
 library(tm)
+library(ggraph)
+library(igraph)
+library(stargazer) #For table formatting
 ```
 
 ##Introduction
 
-##Data Acquistion  
+##Data Aquistion  
 
-We are downloading and unziping the zip file provided by Coursera. We are also downloading a list of [profanities]("https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en") to be used later to clean up the data set. We then proceed to create a data frame corp, which contains one observation per line of text and each observation as three variables:  
+We are downloading and unziping the zip file provided by Coursera. We are also downloading a list of [profanities]("https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en") to be used later to clean up the data set. We then proceed to create a data frame corp, which contains one observation per line of text and each observation as three variables: 
+ 
+* 	*corp*: the origin of the text (twitter, news or blogs)    
+* *line*: line number   
+* *text*: the line of text itself from the text    
 
-*corp: the origin of the text (twitter, news or blogs)  
-*line: line number   
-*text: the line of text itself from the text    
+At the end of data acquisition we have a single data frame ```corp``` that would be used to performe our exploratory data analysis.
 
-At the end of data acquisition we have a single data frame ```corp``` that would be used to performed our exploratory data analysis.
 ```{r Data Aquisition, echo=TRUE, warning=FALSE}
-        library(httr)
-        url = "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
- if   (!dir.exists("./data")) {
+library(httr)
+url = "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+if   (!dir.exists("./data")) {
       dir.create("./data")   
  }
- if(!file.exists("./data/swiftkey.zip")){
+if(!file.exists("./data/swiftkey.zip")){
          GET(url,write_disk("./data/swiftkey.zip",overwrite = TRUE))
          unzip("./data/swiftkey.zip")
  }  
@@ -38,7 +50,6 @@ if(!file.exists("./data/profanity.txt")) {
         GET(url,write_disk("./data/profanity.txt"))
 }
         
-
 blogs <- readLines("./final/en_US/en_US.blogs.txt")
 news <- readLines("./final/en_US/en_US.news.txt")
 twitter <- readLines("./final/en_US/en_US.twitter.txt")
@@ -57,71 +68,117 @@ twitter_df <- data_frame(corp="twitter",line=1:length(twitter),text=twitter)
 
 ##Data Preparation
 
-A few simple steps to prepare the data for analysis. We will first tokeninzed the lines by word into a tidy data set (one observation by word) eliminate any profanity and all english stop words.
+A few simple steps to prepare the data for analysis.  
+ 
+* Step 1: select the twitter data only
+* Step 2: Normalize the case, clean any twitter artifacts (e.g. "rt") and remove any numbers in the text
+* Step 3: tokenize the text by words and eliminate stop words (the, a etc..) and any profanity	
+
+This should be enough preparation for our exploratory analysis 
+
 ```{r data preparation}
 #Step 1: subset for twitter
-corp <- sample_n(twitter_df,1000)
-#Step 2: normalizing case, removing numbers and punctuation marks
+corp <- sample_n(twitter_df,10000)
+#Step 2: normalizing case, cleaning twitter artifacts and removing digits
 corp$text <- tolower(corp$text)
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
 corp$text <- gsub("@\\w+", "", corp$text) #Remoeve any @
-#corp$text <- gsub("[[:punct:]]", "", corp$text) # remove punctuation
 corp$text <- gsub("[[:digit:]]", "", corp$text) # remove numbers
-#Step 5: let's make this corpus tidy and remove stop words and profanity
-
+#Step 3: removing stop words (a, the, etc...) and profanity
 data(stop_words)
-#Step 4: removing stop words (a, the, etc...) and profanity
 tidy_corp <- corp %>%
                 unnest_tokens(word,text,token="words") %>%
-                anti_join(swears) %>%
-                anti_join(stop_words) 
-                
-```
-
-###
-##Exploratory Data Analysis
-###Part 1: 1-gram analysis
-```{r word count plot}
-myfilter = 10
-tidy_corp %>%
+                anti_join(swears, by="word") %>%
+                anti_join(stop_words, by="word") 
+myfilter = 80
+tidy_corp_summary <- tidy_corp %>%
   count(word, sort = TRUE) %>%
   filter(n > myfilter) %>%
   mutate(word = reorder(word, n)) %>%
-  ggplot(aes(word, n)) +
+  mutate(corp="twitter")
+                
+```
+
+
+##Exploratory Data Analysis
+### Summary Statistics
+```{r as.is= TRUE}
+  number_of_lines <- max(corp$line) 
+  number_of_words <- length(tidy_corp$word)
+  distinct_words <- length(tidy_corp_summary$word)
+  mySummary <- data.frame(lines= number_of_lines,words=number_of_words,distinct=distinct_words)
+  stargazer(mySummary, type="html")
+```
+###Part 1: 1-gram analysis  
+
+```{r word count plot, echo=FALSE, message=FALSE, warning=FALSE}
+ 
+  ggplot(tidy_corp_summary,aes(word, n)) +
   geom_bar(stat="identity") +
   xlab(NULL) +
   coord_flip()
 ```
-#### if-tdf
+####if-tdf
 ``` {r word frequency}
 count_word <- tidy_corp %>% 
-        count(word, sort=TRUE) %>%
-      ungroup()
+              count(word, sort=TRUE) %>%
+              ungroup()
 total_words <- sum(count_word$n)
 count_word <- count_word %>%
-  mutate(orig =  "twitter")
+              mutate(orig =  "twitter")
 ```
-#### Word cloud
+####Word cloud
 Word cloud showing the relative importance of the 150 most frequent words in the twiter corpus
+
 ```{r word cloud}
 library(wordcloud)
 freq_word <- bind_tf_idf(count_word,word,orig,n)
 wordcloud(freq_word$word,freq=freq_word$tf,max.words=125,colors=brewer.pal(9,"RdPu"))
 ```
 
-#### Note on non english words
+#### Note on non-english words
 
 ###Part 2: n-gram analysis
 
 ####2-Grams
 ```{r 2-grams}
- corp_bigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=2)
+
+corp_bigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=2)
 corp_bigram <- corp_bigram %>%
           separate(ngram,c("word1","word2"),sep=" ")
+corp_bigram <- corp_bigram %>%
+              filter(!word1 %in% stop_words$word) %>%
+              filter(!word2 %in% stop_words$word)
+corp_bigram_count <- corp_bigram %>%
+          unite(bigram,word1, word2, sep=" ") %>%
+          count(bigram, sort=TRUE) %>%
+          mutate(orig="twitter")
+bigram_graph <- corp_bigram_count %>% 
+                filter(n>=2) %>%
+            graph_from_data_frame()
 
 ```
 ####3-Grams
+```{r 3-grams}
+corp_bigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=2)
+corp_bigram <- corp_bigram %>%
+          separate(ngram,c("word1","word2","word3"),sep=" ")
+corp_bigram <- corp_bigram %>%
+              filter(!word1 %in% stop_words$word) %>%
+              filter(!word2 %in% stop_words$word) %>%
+              filter(!word3 %in% stop_words$word)
+corp_bigram_count <- corp_bigram %>%
+          unite(bigram,word1, word2,word3, sep=" ") %>%
+          count(bigram, sort=TRUE) %>%
+          mutate(orig="twitter")
+bigram_graph <- corp_bigram_count %>% 
+                filter(n>=2) %>%
+            graph_from_data_frame()
+
+```
 
 ###Conclusions and Next Steps
 #References:
 [How to clean twitter data in r](http://technokarak.com/how-to-clean-the-twitter-data-using-r-twitter-mining-tutorial.html)
+[Hlavac, Marek (2015). stargazer: Well-Formatted Regression and Summary Statistics Tables.
+ R package version 5.2.] (http://CRAN.R-project.org/package=stargazer)
