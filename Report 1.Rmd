@@ -21,6 +21,7 @@ library(tm)
 library(ggraph)
 library(igraph)
 library(stargazer) #For table formatting
+library(gridExtra)
 ```
 
 ##Introduction
@@ -29,7 +30,7 @@ library(stargazer) #For table formatting
 
 We are downloading and unziping the zip file provided by Coursera. We are also downloading a list of [profanities]("https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en") to be used later to clean up the data set. We then proceed to create a data frame corp, which contains one observation per line of text and each observation as three variables: 
  
-* 	*corp*: the origin of the text (twitter, news or blogs)    
+* *corp*: the origin of the text (twitter, news or blogs)    
 * *line*: line number   
 * *text*: the line of text itself from the text    
 
@@ -78,7 +79,8 @@ This should be enough preparation for our exploratory analysis
 
 ```{r data preparation}
 #Step 1: subset for twitter
-corp <- sample_n(twitter_df,10000)
+corp <- twitter_df
+#corp <- sample_n(twitter_df,10000)
 #Step 2: normalizing case, cleaning twitter artifacts and removing digits
 corp$text <- tolower(corp$text)
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
@@ -87,16 +89,31 @@ corp$text <- gsub("[[:digit:]]", "", corp$text) # remove numbers
 
 #Step 3: removing stop words (a, the, etc...) and profanity
 data(stop_words)
-tidy_corp <- corp %>%
+tidy_corp_nostop <- corp %>%
                 unnest_tokens(word,text,token="words") %>%
                 anti_join(swears, by="word") %>%
-                anti_join(stop_words, by="word") 
-myfilter = 80
-tidy_corp_summary <- tidy_corp %>%
+                anti_join(stop_words, by="word")
+
+tidy_corp_stop <- corp %>%
+                unnest_tokens(word,text,token="words") %>%
+                anti_join(swears, by="word")
+
+tidy_corp_nostop_summary <- tidy_corp_nostop %>%
   count(word, sort = TRUE) %>%
   mutate(word = reorder(word, n)) %>%
-  mutate(corp="twitter")
-                
+  mutate(corp="twitter") %>%
+  bind_tf_idf(word,corp,n)
+
+#tidy_corp_nostop_summary <- tidy_corp_nostop_summary %>%  mutate(cumsum=cumsum(n)) %>% mutate(cumsumfreq=cumsum(tf))
+
+tidy_corp_stop_summary <- tidy_corp_stop %>%
+  count(word, sort = TRUE) %>%
+  mutate(word = reorder(word, n)) %>%
+  mutate(corp="twitter") %>%
+  bind_tf_idf(word,corp,n)
+
+#tidy_corp_stop_summary <- tidy_corp_stop_summary %>%  mutate(cumsum=cumsum(n)) %>% mutate(cumsumfreq=cumsum(tf))
+
 ```
 
 
@@ -109,13 +126,13 @@ tidy_corp_summary <- tidy_corp %>%
   mySummary <- data.frame(lines= number_of_lines,words=number_of_words,distinct=distinct_words)
   stargazer(mySummary)
 ```
-###Part 1: 1-gram analysis  
+###Part 1: monogram analysis  
 
 ```{r word count plot, echo=FALSE, message=FALSE, warning=FALSE}
-corp_freq <- tidy_corp_summary %>% 
+corp_freq <- tidy_corp_stop_summary %>% 
               bind_tf_idf(word,corp,n) %>%
               mutate(cumsum=cumsum(tf))
-corp_freq %>% filter(n>80) %>%
+g1 <- corp_freq %>% filter(rank(desc(tf))<=40) %>%
   ggplot(aes(word, tf)) +
   geom_point() +
   xlab(NULL) +
@@ -123,38 +140,55 @@ corp_freq %>% filter(n>80) %>%
   coord_flip() +
   theme_bw()
 
+corp_freq_nostop <- tidy_corp_nostop_summary %>% 
+              bind_tf_idf(word,corp,n) %>%
+              mutate(cumsum=cumsum(tf))
+
+g2 <- corp_freq_nostop %>%  filter(rank(desc(tf))<=40) %>%
+  ggplot(aes(word, tf)) +
+  geom_point() +
+  xlab(NULL) +
+  ylab("Frequency") +
+  coord_flip() +
+  theme_bw()
+grid.arrange(g1,g2,ncol=2)
 ```
 
-```
 ####Word cloud
-Word cloud showing the relative importance of the 150 most frequent words in the twiter corpus
+Word cloud showing the relative importance of the 125 most frequent words in the twiter corpus
 
 ```{r word cloud}
 library(wordcloud)
-freq_word <- bind_tf_idf(count_word,word,orig,n)
-wordcloud(freq_word$word,freq=freq_word$tf,max.words=125,colors=brewer.pal(9,"RdPu"))
+#freq_word <- bind_tf_idf(count_word,word,orig,n)
+wordcloud(corp_freq_nostop$word,freq=corp_freq_nostop$tf,max.words=125,colors=brewer.pal(9,"RdPu"))
 ```
 
 #### Note on non-english words
 
 ###Part 2: n-gram analysis
 
-####2-Grams
+####biGrams
 ```{r 2-grams}
 
 corp_bigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=2)
 corp_bigram <- corp_bigram %>%
           separate(ngram,c("word1","word2"),sep=" ")
-corp_bigram <- corp_bigram %>%
-              filter(!word1 %in% stop_words$word) %>%
-              filter(!word2 %in% stop_words$word)
+#corp_bigram <- corp_bigram %>%
+#              filter(!word1 %in% stop_words$word) %>%
+#              filter(!word2 %in% stop_words$word)
 corp_bigram_count <- corp_bigram %>%
           unite(bigram,word1, word2, sep=" ") %>%
           count(bigram, sort=TRUE) %>%
           mutate(orig="twitter")
-bigram_graph <- corp_bigram_count %>% 
-                filter(n>=2) %>%
+bigram_graph <- corp_bigram_count %>% filter(rank(desc(tf)) <= 10) %>%
             graph_from_data_frame()
+g1 <- corp_bigram_count %>%  filter(rank(desc(tf))<=40) %>% arrange(desc(tf)) %>%
+  ggplot(aes(bigram, tf)) +
+  geom_point() +
+  xlab(NULL) +
+  ylab("Frequency") +
+  coord_flip() +
+  theme_bw()
 
 ```
 ####3-Grams
