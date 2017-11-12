@@ -55,7 +55,7 @@ if(!file.exists("./data/profanity.txt")) {
 #news <- readLines("./final/en_US/en_US.news.txt")
 twitter <- readLines("./final/en_US/en_US.twitter.txt")
 ## This is is our "profanity" list
-swears <- as.data.frame(readLines("./data/profanity.txt"))
+swears <- readLines("./data/profanity.txt")
  ## Prepping our list of swear words
 swears <- as_tibble(as.character(swears))
 colnames(swears) <- "word"
@@ -79,8 +79,8 @@ This should be enough preparation for our exploratory analysis
 
 ```{r data preparation}
 #Step 1: subset for twitter
-corp <- twitter_df
-#corp <- sample_n(twitter_df,10000)
+#corp <-twitter_df
+corp <- sample_n(twitter_df,10000)
 #Step 2: normalizing case, cleaning twitter artifacts and removing digits
 corp$text <- tolower(corp$text)
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
@@ -130,8 +130,7 @@ tidy_corp_stop_summary <- tidy_corp_stop %>%
 
 ```{r word count plot, echo=FALSE, message=FALSE, warning=FALSE}
 corp_freq <- tidy_corp_stop_summary %>% 
-              bind_tf_idf(word,corp,n) %>%
-              mutate(cumsum=cumsum(tf))
+              bind_tf_idf(word,corp,n)
 g1 <- corp_freq %>% filter(rank(desc(tf))<=40) %>%
   ggplot(aes(word, tf)) +
   geom_point() +
@@ -180,10 +179,15 @@ corp_bigram_count <- corp_bigram %>%
           unite(bigram,word1, word2, sep=" ") %>%
           count(bigram, sort=TRUE) %>%
           mutate(orig="twitter")
-bigram_graph <- corp_bigram_count %>% filter(rank(desc(tf)) <= 10) %>%
-            graph_from_data_frame()
-g1 <- corp_bigram_count %>%  filter(rank(desc(tf))<=40) %>% arrange(desc(tf)) %>%
-  ggplot(aes(bigram, tf)) +
+## TO DO: Bigram are factors, need to either make it a string or re-order the factors.
+corp_bigram_count <- corp_bigram_count %>% 
+                    arrange(rank(desc(n))) %>% 
+                    bind_tf_idf(bigram,orig,n)desc
+bigram_graph <- corp_bigram_count %>% 
+                filter(rank(desc(tf)) <= 10) %>%
+                graph_from_data_frame()
+g1 <-  corp_bigram_count %>% filter(rank(desc(n))<= 40) %>%
+  ggplot(aes(x=reorder(bigram,myorder), tf)) +
   geom_point() +
   xlab(NULL) +
   ylab("Frequency") +
