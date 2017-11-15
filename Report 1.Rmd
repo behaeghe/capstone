@@ -20,7 +20,7 @@ library(tidytext)
 library(tm)
 library(ggraph)
 library(igraph)
-library(stargazer) #For table formatting
+library(knitr) #For table formatting
 library(gridExtra)
 ```
 
@@ -119,12 +119,12 @@ tidy_corp_stop_summary <- tidy_corp_stop %>%
 
 ##Exploratory Data Analysis
 ### Summary Statistics
-```{r as.is= FALSE}
+```{r as.is= TRUE}
   number_of_lines <- max(corp$line) 
   number_of_words <- length(tidy_corp_nostop$word)
   distinct_words <- length(tidy_corp_nostop_summary$word)
   mySummary <- data.frame(lines= number_of_lines,words=number_of_words,distinct=distinct_words)
-  stargazer(mySummary)
+  kable(mySummary)
 ```
 ###Part 1: monogram analysis  
 
