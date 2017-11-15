@@ -121,8 +121,8 @@ tidy_corp_stop_summary <- tidy_corp_stop %>%
 ### Summary Statistics
 ```{r as.is= FALSE}
   number_of_lines <- max(corp$line) 
-  number_of_words <- length(tidy_corp$word)
-  distinct_words <- length(tidy_corp_summary$word)
+  number_of_words <- length(tidy_corp_nostop$word)
+  distinct_words <- length(tidy_corp_nostop_summary$word)
   mySummary <- data.frame(lines= number_of_lines,words=number_of_words,distinct=distinct_words)
   stargazer(mySummary)
 ```
@@ -178,40 +178,54 @@ corp_bigram <- corp_bigram %>%
 corp_bigram_count <- corp_bigram %>%
           unite(bigram,word1, word2, sep=" ") %>%
           count(bigram, sort=TRUE) %>%
-          mutate(orig="twitter")
+          mutate(orig="twitter") %>%
+          arrange(desc(n))
 ## TO DO: Bigram are factors, need to either make it a string or re-order the factors.
 corp_bigram_count <- corp_bigram_count %>% 
-                    arrange(rank(desc(n))) %>% 
-                    bind_tf_idf(bigram,orig,n)desc
+                    bind_tf_idf(bigram,orig,n) %>%
+                    mutate(bigram=factor(bigram,levels=bigram))
 bigram_graph <- corp_bigram_count %>% 
                 filter(rank(desc(tf)) <= 10) %>%
                 graph_from_data_frame()
-g1 <-  corp_bigram_count %>% filter(rank(desc(n))<= 40) %>%
-  ggplot(aes(x=reorder(bigram,myorder), tf)) +
-  geom_point() +
+g1 <-  corp_bigram_count %>% 
+  filter(rank(desc(tf))<= 40) %>%
+  ggplot(aes(reorder(bigram,desc(bigram)),tf)) +
+  geom_point(stat="identity") + 
   xlab(NULL) +
+  coord_flip()+
   ylab("Frequency") +
-  coord_flip() +
   theme_bw()
-
+g1
 ```
 ####3-Grams
 ```{r 3-grams}
-corp_bigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=2)
-corp_bigram <- corp_bigram %>%
+corp_trigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=3)
+corp_trigram <- corp_trigram %>%
           separate(ngram,c("word1","word2","word3"),sep=" ")
-corp_bigram <- corp_bigram %>%
-              filter(!word1 %in% stop_words$word) %>%
-              filter(!word2 %in% stop_words$word) %>%
-              filter(!word3 %in% stop_words$word)
-corp_bigram_count <- corp_bigram %>%
-          unite(bigram,word1, word2,word3, sep=" ") %>%
-          count(bigram, sort=TRUE) %>%
-          mutate(orig="twitter")
-bigram_graph <- corp_bigram_count %>% 
-                filter(n>=2) %>%
-            graph_from_data_frame()
-
+#corp_bigram <- corp_bigram %>%
+#              filter(!word1 %in% stop_words$word) %>%
+#              filter(!word2 %in% stop_words$word)
+corp_trigram_count <- corp_trigram %>%
+          unite(trigram,word1, word2,word3, sep=" ") %>%
+          count(trigram, sort=TRUE) %>%
+          mutate(orig="twitter") %>%
+          arrange(desc(n))
+## TO DO: Bigram are factors, need to either make it a string or re-order the factors.
+corp_trigram_count <- corp_trigram_count %>% 
+                    bind_tf_idf(trigram,orig,n) %>%
+                    mutate(trigram=factor(trigram,levels=trigram))
+trigram_graph <- corp_trigram_count %>% 
+                filter(rank(desc(tf)) <= 10) %>%
+                graph_from_data_frame()
+g2 <-  corp_trigram_count %>% 
+  filter(rank(desc(tf))<= 40) %>%
+  ggplot(aes(reorder(trigram,desc(trigram)),tf)) +
+  geom_point(stat="identity") + 
+  xlab(NULL) +
+  coord_flip()+
+  ylab("Frequency") +
+  theme_bw()
+g2
 ```
 
 ###Conclusions and Next Steps
