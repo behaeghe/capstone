@@ -1,5 +1,5 @@
 ---
-title: 'Coursera Capstone Exploratory Data Analysis - Report #1'
+title: 'Coursera Capstone EDA - Report #1'
 author: "JRB"
 date: "October 30, 2017"
 output:
@@ -73,7 +73,7 @@ A few simple steps to prepare the data for analysis.
  
 * Step 1: select the twitter data only
 * Step 2: Normalize the case, clean any twitter artifacts (e.g. "rt") and remove any numbers in the text
-* Step 3: tokenize the text by words and eliminate stop words (the, a etc..) and any profanity	
+* Step 3: tokenize the text by words and eliminateany profanity	
 
 This should be enough preparation for our exploratory analysis 
 
@@ -126,32 +126,48 @@ tidy_corp_stop_summary <- tidy_corp_stop %>%
   mySummary <- data.frame(lines= number_of_lines,words=number_of_words,distinct=distinct_words)
   kable(mySummary)
 ```
+
 ###Part 1: monogram analysis  
 
-```{r word count plot, echo=FALSE, message=FALSE, warning=FALSE}
+```{r word count plot, echo=FALSE, message=FALSE, warning=FALSE, fig.align='enter'}
 corp_freq <- tidy_corp_stop_summary %>% 
               bind_tf_idf(word,corp,n)
-g1 <- corp_freq %>% filter(rank(desc(tf))<=40) %>%
+g1 <- corp_freq %>% filter(rank(desc(tf))<=25) %>%
   ggplot(aes(word, tf)) +
   geom_point() +
   xlab(NULL) +
   ylab("Frequency") +
+  ggtitle("25 most frequent words \n including stop words") +
   coord_flip() +
-  theme_bw()
+  theme_minimal() +
+  theme(
+                text = element_text(
+                                        face="italic",
+                                        colour="black", 
+                                        size=8)
+                        )
 
 corp_freq_nostop <- tidy_corp_nostop_summary %>% 
               bind_tf_idf(word,corp,n) %>%
               mutate(cumsum=cumsum(tf))
 
-g2 <- corp_freq_nostop %>%  filter(rank(desc(tf))<=40) %>%
+g2 <- corp_freq_nostop %>%  filter(rank(desc(tf))<=25) %>%
   ggplot(aes(word, tf)) +
   geom_point() +
   xlab(NULL) +
   ylab("Frequency") +
+  ggtitle("25 most frequent words \n excluding stop words") +
   coord_flip() +
-  theme_bw()
+  theme_minimal()
+g2 <- g2 + theme(
+                text = element_text(
+                                        face="italic",
+                                        colour="black", 
+                                        size=8)
+                        )
 grid.arrange(g1,g2,ncol=2)
 ```
+--
 
 ####Word cloud
 Word cloud showing the relative importance of the 125 most frequent words in the twiter corpus
@@ -161,12 +177,11 @@ library(wordcloud)
 #freq_word <- bind_tf_idf(count_word,word,orig,n)
 wordcloud(corp_freq_nostop$word,freq=corp_freq_nostop$tf,max.words=125,colors=brewer.pal(9,"RdPu"))
 ```
-
-#### Note on non-english words
+--
 
 ###Part 2: n-gram analysis
 
-####biGrams
+####n-grams analysis
 ```{r 2-grams}
 
 corp_bigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=2)
@@ -188,16 +203,17 @@ bigram_graph <- corp_bigram_count %>%
                 filter(rank(desc(tf)) <= 10) %>%
                 graph_from_data_frame()
 g1 <-  corp_bigram_count %>% 
-  filter(rank(desc(tf))<= 40) %>%
+  filter(rank(desc(tf))<= 25) %>%
   ggplot(aes(reorder(bigram,desc(bigram)),tf)) +
   geom_point(stat="identity") + 
   xlab(NULL) +
   coord_flip()+
   ylab("Frequency") +
-  theme_bw()
-g1
+  ggtitle("25 most frequent bigrams") +
+  theme_minimal()
+
 ```
-####3-Grams
+
 ```{r 3-grams}
 corp_trigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=3)
 corp_trigram <- corp_trigram %>%
@@ -218,14 +234,15 @@ trigram_graph <- corp_trigram_count %>%
                 filter(rank(desc(tf)) <= 10) %>%
                 graph_from_data_frame()
 g2 <-  corp_trigram_count %>% 
-  filter(rank(desc(tf))<= 40) %>%
+  filter(rank(desc(tf))<= 25) %>%
   ggplot(aes(reorder(trigram,desc(trigram)),tf)) +
   geom_point(stat="identity") + 
   xlab(NULL) +
   coord_flip()+
   ylab("Frequency") +
+  ggtitle("25 most frequent trigrams") +
   theme_bw()
-g2
+grid.arrange(g1,g2,ncol=2)
 ```
 
 ###Conclusions and Next Steps
