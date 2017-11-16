@@ -3,8 +3,8 @@ title: 'Coursera Capstone EDA - Report #1'
 author: "JRB"
 date: "October 30, 2017"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -22,6 +22,18 @@ library(ggraph)
 library(igraph)
 library(knitr) #For table formatting
 library(gridExtra)
+library(ggthemes)
+
+ggstyle <- function() {
+  theme_tufte() +
+  theme(
+                text = element_text(
+                                        face="italic",
+                                        colour="black", 
+                                        size=10)
+                        )
+
+} 
 ```
 
 ##Introduction
@@ -129,7 +141,7 @@ tidy_corp_stop_summary <- tidy_corp_stop %>%
 
 ###Part 1: monogram analysis  
 
-```{r word count plot, echo=FALSE, message=FALSE, warning=FALSE, fig.align='enter'}
+```{r word count plot, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
 corp_freq <- tidy_corp_stop_summary %>% 
               bind_tf_idf(word,corp,n)
 g1 <- corp_freq %>% filter(rank(desc(tf))<=25) %>%
@@ -138,15 +150,9 @@ g1 <- corp_freq %>% filter(rank(desc(tf))<=25) %>%
   xlab(NULL) +
   ylab("Frequency") +
   ggtitle("25 most frequent words \n including stop words") +
-  coord_flip() +
-  theme_minimal() +
-  theme(
-                text = element_text(
-                                        face="italic",
-                                        colour="black", 
-                                        size=8)
-                        )
-
+  coord_flip() + 
+  ggstyle()
+  
 corp_freq_nostop <- tidy_corp_nostop_summary %>% 
               bind_tf_idf(word,corp,n) %>%
               mutate(cumsum=cumsum(tf))
@@ -158,14 +164,8 @@ g2 <- corp_freq_nostop %>%  filter(rank(desc(tf))<=25) %>%
   ylab("Frequency") +
   ggtitle("25 most frequent words \n excluding stop words") +
   coord_flip() +
-  theme_minimal()
-g2 <- g2 + theme(
-                text = element_text(
-                                        face="italic",
-                                        colour="black", 
-                                        size=8)
-                        )
-grid.arrange(g1,g2,ncol=2)
+  ggstyle()
+  grid.arrange(g1,g2,ncol=2)
 ```
 --
 
@@ -200,7 +200,7 @@ corp_bigram_count <- corp_bigram_count %>%
                     bind_tf_idf(bigram,orig,n) %>%
                     mutate(bigram=factor(bigram,levels=bigram))
 bigram_graph <- corp_bigram_count %>% 
-                filter(rank(desc(tf)) <= 10) %>%
+                filter(rank(desc(n)) <= 10) %>%
                 graph_from_data_frame()
 g1 <-  corp_bigram_count %>% 
   filter(rank(desc(tf))<= 25) %>%
@@ -210,7 +210,13 @@ g1 <-  corp_bigram_count %>%
   coord_flip()+
   ylab("Frequency") +
   ggtitle("25 most frequent bigrams") +
-  theme_minimal()
+   theme_minimal() +
+  theme(
+                text = element_text(
+                                        face="italic",
+                                        colour="black", 
+                                        size=8)
+                        )
 
 ```
 
@@ -218,21 +224,15 @@ g1 <-  corp_bigram_count %>%
 corp_trigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=3)
 corp_trigram <- corp_trigram %>%
           separate(ngram,c("word1","word2","word3"),sep=" ")
-#corp_bigram <- corp_bigram %>%
-#              filter(!word1 %in% stop_words$word) %>%
-#              filter(!word2 %in% stop_words$word)
 corp_trigram_count <- corp_trigram %>%
           unite(trigram,word1, word2,word3, sep=" ") %>%
           count(trigram, sort=TRUE) %>%
           mutate(orig="twitter") %>%
           arrange(desc(n))
-## TO DO: Bigram are factors, need to either make it a string or re-order the factors.
 corp_trigram_count <- corp_trigram_count %>% 
                     bind_tf_idf(trigram,orig,n) %>%
                     mutate(trigram=factor(trigram,levels=trigram))
-trigram_graph <- corp_trigram_count %>% 
-                filter(rank(desc(tf)) <= 10) %>%
-                graph_from_data_frame()
+
 g2 <-  corp_trigram_count %>% 
   filter(rank(desc(tf))<= 25) %>%
   ggplot(aes(reorder(trigram,desc(trigram)),tf)) +
@@ -241,12 +241,47 @@ g2 <-  corp_trigram_count %>%
   coord_flip()+
   ylab("Frequency") +
   ggtitle("25 most frequent trigrams") +
-  theme_bw()
+    theme_minimal() +
+  theme(
+                text = element_text(
+                                        face="italic",
+                                        colour="black", 
+                                        size=8)
+                        )
 grid.arrange(g1,g2,ncol=2)
 ```
+```{r graph analysis}
+#bigram
 
+bigram_graph <- corp_bigram %>% 
+                count(word1,word2,sort=TRUE) %>%
+                filter(rank(desc(n)) <= 125) %>%
+                graph_from_data_frame() 
+a <- grid::arrow(type="closed",unit(0.15,"inches"))
+ggraph(bigram_graph, layout = "fr") +
+      geom_edge_link(aes(edge_alpha=n),
+                  show.legend = FALSE,
+                  arrow=a,end_cap=circle(0.07,"inches") ) +
+      geom_node_point(color="lightblue",size=5) +
+      geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
+      theme_void()
+#Trigram
+
+
+trigram_graph <- corp_trigram %>% 
+                count(word1,word2,word3,sort=TRUE) %>%
+                filter(rank(desc(n)) <= 125) %>%
+                graph_from_data_frame() 
+a <- grid::arrow(type="closed",unit(0.15,"inches"))
+ggraph(trigram_graph, layout = "fr") +
+      geom_edge_link(aes(edge_alpha=n),
+                  show.legend = FALSE,
+                  arrow=a,end_cap=circle(0.07,"inches") ) +
+      geom_node_point(color="lightblue",size=5) +
+      geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
+      theme_void()
+```
 ###Conclusions and Next Steps
 #References:
 [How to clean twitter data in r](http://technokarak.com/how-to-clean-the-twitter-data-using-r-twitter-mining-tutorial.html)
-[Hlavac, Marek (2015). stargazer: Well-Formatted Regression and Summary Statistics Tables.
- R package version 5.2.] (http://CRAN.R-project.org/package=stargazer)
+[Text mining in R: the tidy approach](http://tidytextmining.com/)
