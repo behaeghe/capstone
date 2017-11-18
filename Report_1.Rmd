@@ -276,7 +276,7 @@ g2 <- ggraph(trigram_graph, layout = "fr") +
       geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
       ggtitle("Connected graph showing the 125 most frequent trigrams") +
       theme_void() +
-      ggstyle()
+      ggtitle()
 grid.arrange(g1,g2,ncol=2)
 ```
 ```{r graph analysis}
