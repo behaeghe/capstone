@@ -23,7 +23,7 @@ library(igraph)
 library(knitr) #For table formatting
 library(gridExtra)
 library(ggthemes)
-
+## Formating for plots
 ggstyle <- function() {
   theme_tufte() +
   theme(
@@ -34,6 +34,11 @@ ggstyle <- function() {
                         )
 
 } 
+## Formatting for graphs
+a <- grid::arrow(angle=45,
+                 type="open",
+                 unit(4,"mm"),
+                 end_cap=circle(3,"mm"))
 ```
 
 ##Introduction
@@ -210,26 +215,20 @@ g1 <-  corp_bigram_count %>%
   coord_flip()+
   ylab("Frequency") +
   ggtitle("25 most frequent bigrams") +
-   theme_minimal() +
-  theme(
-                text = element_text(
-                                        face="italic",
-                                        colour="black", 
-                                        size=8)
-                        )
+  ggstyle()
 
 bigram_graph <- corp_bigram %>% 
                 count(word1,word2,sort=TRUE) %>%
                 filter(rank(desc(n)) <= 125) %>%
                 graph_from_data_frame() 
-a <- grid::arrow(type="closed",unit(0.15,"inches"))
+
 g2 <- ggraph(bigram_graph, layout = "fr") +
       geom_edge_link(aes(edge_alpha=n),
                   show.legend = FALSE,
                   arrow=a,end_cap=circle(0.07,"inches") ) +
       geom_node_point(color="lightblue",size=5) +
       geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
-      theme_void() +
+      theme_graph() +
       ggstyle() +
       ggtitle("Connected graph showing the 125 most frequent trigrams")
 grid.arrange(g1,g2,ncol=2)
@@ -267,16 +266,17 @@ trigram_graph <- corp_trigram %>%
                 count(word1,word2,word3,sort=TRUE) %>%
                 filter(rank(desc(n)) <= 125) %>%
                 graph_from_data_frame() 
-a <- grid::arrow(type="closed",unit(0.15,"inches"))
+
 g2 <- ggraph(trigram_graph, layout = "fr") +
       geom_edge_link(aes(edge_alpha=n),
                   show.legend = FALSE,
-                  arrow=a,end_cap=circle(0.07,"inches") ) +
+                  arrow=a,end_cap=circle(3,"mm") ) +
       geom_node_point(color="lightblue",size=5) +
       geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
       ggtitle("Connected graph showing the 125 most frequent trigrams") +
-      theme_void() +
-      ggstyle()
+      theme_graph() +
+      xlab(NULL) +
+      ylab(NULL)
 grid.arrange(g1,g2,ncol=2)
 ```
 ```{r graph analysis}
