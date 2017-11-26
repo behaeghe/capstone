@@ -30,15 +30,20 @@ ggstyle <- function() {
                 text = element_text(
                                         face="italic",
                                         colour="black", 
-                                        size=10)
+                                        size=10),
+                plot.title = element_text(
+                              face="italic",
+                              colour="black",
+                              size=11,
+                              hjust = 0.5
+                )
                         )
 
 } 
 ## Formatting for graphs
 a <- grid::arrow(angle=45,
                  type="open",
-                 unit(4,"mm"),
-                 end_cap=circle(3,"mm"))
+                 unit(4,"mm"))
 ```
 
 ##Introduction
@@ -68,8 +73,8 @@ if(!file.exists("./data/profanity.txt")) {
         GET(url,write_disk("./data/profanity.txt"))
 }
         
-#blogs <- readLines("./final/en_US/en_US.blogs.txt")
-#news <- readLines("./final/en_US/en_US.news.txt")
+blogs <- readLines("./final/en_US/en_US.blogs.txt")
+news <- readLines("./final/en_US/en_US.news.txt")
 twitter <- readLines("./final/en_US/en_US.twitter.txt")
 ## This is is our "profanity" list
 swears <- readLines("./data/profanity.txt")
@@ -77,10 +82,10 @@ swears <- readLines("./data/profanity.txt")
 swears <- as_tibble(as.character(swears))
 colnames(swears) <- "word"
 ##Creating a corpus for our exploratory data analysis
-#blogs_df <- data_frame(corp="blogs",line=1:length(blogs),text=blogs)
-#news_df <- data_frame(corp="news",line=1:length(news),text=news)
+blogs_df <- data_frame(corp="blogs",line=1:length(blogs),text=blogs)
+news_df <- data_frame(corp="news",line=1:length(news),text=news)
 twitter_df <- data_frame(corp="twitter",line=1:length(twitter),text=twitter)
-#corp <- rbind(blogs_df,news_df,twitter_df)
+corp <- rbind(blogs_df,news_df,twitter_df)
 ###
 ```
 
@@ -97,7 +102,7 @@ This should be enough preparation for our exploratory analysis
 ```{r data preparation}
 #Step 1: subset for twitter
 #corp <-twitter_df
-corp <- sample_n(twitter_df,10000)
+corp <- sample_n(corp,10000)
 #Step 2: normalizing case, cleaning twitter artifacts and removing digits
 corp$text <- tolower(corp$text)
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
@@ -115,18 +120,18 @@ tidy_corp_stop <- corp %>%
                 unnest_tokens(word,text,token="words") %>%
                 anti_join(swears, by="word")
 
-tidy_corp_nostop_summary <- tidy_corp_nostop %>%
+tidy_corp_nostop_summary <- tidy_corp_nostop %>% 
+  group_by(corp) %>%
   count(word, sort = TRUE) %>%
   mutate(word = reorder(word, n)) %>%
-  mutate(corp="twitter") %>%
-  bind_tf_idf(word,corp,n)
+  bind_tf_idf(word,corp,n) 
 
 #tidy_corp_nostop_summary <- tidy_corp_nostop_summary %>%  mutate(cumsum=cumsum(n)) %>% mutate(cumsumfreq=cumsum(tf))
 
 tidy_corp_stop_summary <- tidy_corp_stop %>%
+  group_by(corp) %>%
   count(word, sort = TRUE) %>%
   mutate(word = reorder(word, n)) %>%
-  mutate(corp="twitter") %>%
   bind_tf_idf(word,corp,n)
 
 #tidy_corp_stop_summary <- tidy_corp_stop_summary %>%  mutate(cumsum=cumsum(n)) %>% mutate(cumsumfreq=cumsum(tf))
@@ -137,20 +142,40 @@ tidy_corp_stop_summary <- tidy_corp_stop %>%
 ##Exploratory Data Analysis
 ### Summary Statistics
 ```{r as.is= TRUE}
-  number_of_lines <- max(corp$line) 
-  number_of_words <- length(tidy_corp_nostop$word)
-  distinct_words <- length(tidy_corp_nostop_summary$word)
-  mySummary <- data.frame(lines= number_of_lines,words=number_of_words,distinct=distinct_words)
+  number_of_lines <- max(corp[corp$corp=="twitter",]$line) 
+  number_of_words <- length(tidy_corp_nostop[corp$corp=="twitter",]$word)
+  distinct_words <- length(tidy_corp_nostop_summary[corp$corp=="twitter",]$word)
+  mySummary <- data.frame(lines=number_of_lines,words=number_of_words,distinct=distinct_words)
+  #
+  number_of_lines <- max(corp[corp$corp=="blogs",]$line) 
+  number_of_words <- length(tidy_corp_nostop[corp$corp=="blogs",]$word)
+  distinct_words <- length(tidy_corp_nostop_summary[corp$corp=="blogs",]$word)
+  tmp <- c(lines= number_of_lines,words=number_of_words,distinct=distinct_words)
+  mySummary <- rbind(mySummary,tmp)
+  #
+  number_of_lines <- max(corp[corp$corp=="news",]$line) 
+  number_of_words <- length(tidy_corp_nostop[corp$corp=="news",]$word)
+  distinct_words <- length(tidy_corp_nostop_summary[corp$corp=="news",]$word)
+  tmp <- c(lines= number_of_lines,words=number_of_words,distinct=distinct_words)
+ 
+  mySummary <- rbind(mySummary,tmp)
+  row.names(mySummary) <- c("twitter","blogs","news") 
   kable(mySummary)
 ```
 
 ###Part 1: monogram analysis  
 
 ```{r word count plot, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+#filtering for twitter only
+
 corp_freq <- tidy_corp_stop_summary %>% 
-              bind_tf_idf(word,corp,n)
+              filter(corp=="twitter") %>% 
+              arrange(desc(tf)) %>% 
+              mutate(word=factor(word,levels=word)) %>%
+              mutate(cumsum=cumsum(tf)) 
+          
 g1 <- corp_freq %>% filter(rank(desc(tf))<=25) %>%
-  ggplot(aes(word, tf)) +
+  ggplot(aes(reorder(word,desc(word)), tf)) +
   geom_point() +
   xlab(NULL) +
   ylab("Frequency") +
@@ -159,11 +184,13 @@ g1 <- corp_freq %>% filter(rank(desc(tf))<=25) %>%
   ggstyle()
   
 corp_freq_nostop <- tidy_corp_nostop_summary %>% 
-              bind_tf_idf(word,corp,n) %>%
-              mutate(cumsum=cumsum(tf))
+                  filter(corp=="twitter") %>% 
+                  arrange(desc(tf)) %>% 
+                  mutate(word=factor(word,levels=word)) %>%
+                  mutate(cumsum=cumsum(tf)) 
 
 g2 <- corp_freq_nostop %>%  filter(rank(desc(tf))<=25) %>%
-  ggplot(aes(word, tf)) +
+  ggplot(aes(reorder(word,desc(word)), tf)) +
   geom_point() +
   xlab(NULL) +
   ylab("Frequency") +
@@ -189,7 +216,7 @@ wordcloud(corp_freq_nostop$word,freq=corp_freq_nostop$tf,max.words=125,colors=br
 ####n-grams analysis
 ```{r 2-grams}
 
-corp_bigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=2)
+corp_bigram <- unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=2)
 corp_bigram <- corp_bigram %>%
           separate(ngram,c("word1","word2"),sep=" ")
 #corp_bigram <- corp_bigram %>%
@@ -235,7 +262,7 @@ grid.arrange(g1,g2,ncol=2)
 ```
 
 ```{r 3-grams}
-corp_trigram <- unnest_tokens(corp,ngram,text,token="ngrams",n=3)
+corp_trigram <- unnest_tokens(corp[corp$corp="twitter",],ngram,text,token="ngrams",n=3)
 corp_trigram <- corp_trigram %>%
           separate(ngram,c("word1","word2","word3"),sep=" ")
 corp_trigram_count <- corp_trigram %>%
