@@ -1,7 +1,7 @@
 ---
 title: 'Coursera Capstone EDA - Report #1'
 author: "JRB"
-date: "October 30, 2017"
+date: "November 26, 2017"
 output:
   html_document: default
   pdf_document: default
@@ -163,7 +163,7 @@ tidy_corp_stop_summary <- tidy_corp_stop %>%
   kable(mySummary)
 ```
 
-###Part 1: monogram analysis  
+##Part 1: monogram analysis  
 
 ```{r word count plot, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
 #filtering for twitter only
@@ -201,7 +201,7 @@ g2 <- corp_freq_nostop %>%  filter(rank(desc(tf))<=25) %>%
 ```
 --
 
-####Word cloud
+###Word cloud
 Word cloud showing the relative importance of the 125 most frequent words in the twiter corpus
 
 ```{r word cloud}
@@ -211,9 +211,10 @@ wordcloud(corp_freq_nostop$word,freq=corp_freq_nostop$tf,max.words=125,colors=br
 ```
 --
 
-###Part 2: n-gram analysis
+##Part 2: n-gram analysis
 
-####n-grams analysis
+
+###bigrams analysis  
 ```{r 2-grams}
 
 corp_bigram <- unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=2)
@@ -270,6 +271,8 @@ ggraph(bigram_graph, layout = "fr") +
       
 ```
 
+###Trigrams Analysis   
+
 ```{r 3-grams}
 corp_trigram <- unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=3)
 corp_trigram <- corp_trigram %>%
@@ -322,7 +325,7 @@ ggraph(trigram_graph, layout = "fr") +
       )
 
 ```
-```{r graph analysis}
+```{r graph analysis, eval=FALSE, include=FALSE}
 #bigram
 
 bigram_graph <- corp_bigram %>% 
@@ -353,12 +356,23 @@ ggraph(trigram_graph, layout = "fr") +
       geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
       theme_void()
 ```
-###Disctionary Coverage
-As illustrated in the graph below, based on the corpus containing stop words, it will take a dictionary of ` r count(corp_freq[corp_freq$cumsum <=0.8,])` words to cover 80% of the words in the corpus (blue lines) and a ` r count(corp_freq[corp_freq$cumsum <=0.5,])` words dictionary to cover 50% of the corpus.  
+###Dictionary Coverage  
+As illustrated in the graph below, based on the corpus containing stop words, it will take a dictionary of `r count(corp_freq[corp_freq$cumsum <=0.8,])` words to cover 80% of the words in the corpus (blue lines) and a `r count(corp_freq[corp_freq$cumsum <=0.5,])` words dictionary to cover 50% of the corpus (red lines).  
+
 ```{r graph for dictionary coverage}
+cutoff0.5 <- count(corp_freq[corp_freq$cumsum <=0.5,])$nn
+cutoff0.8 <- count(corp_freq[corp_freq$cumsum <=0.8,])$nn
+plot(corp_freq$cumsum, type="l",xlab="word count",ylab="cumulative sum")
+abline(h=0.5,col="red")
+abline(v=cutoff0.5,col="red")
+abline(h=0.8,col="blue")
+abline(v=cutoff0.8,col="blue")
 
 ```
+  
 ###Conclusions and Next Steps
-#References:
-[How to clean twitter data in r](http://technokarak.com/how-to-clean-the-twitter-data-using-r-twitter-mining-tutorial.html)
+The analysis shows that a limited dictionary can be used to ensure a relatively large coverage of the corpus. The connected n-grams graph could be used to build the models to asses the probaility of the next word given a starting word. For example, one could imagine a shiny app where the end user enter a word and the application would suggest the most 3 probables words based on the connected graph we could derive from the corpus.  
+
+##References:  
+[How to clean twitter data in r](http://technokarak.com/how-to-clean-the-twitter-data-using-r-twitter-mining-tutorial.html)  
 [Text mining in R: the tidy approach](http://tidytextmining.com/)
