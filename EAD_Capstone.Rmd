@@ -32,7 +32,7 @@ ggstyle <- function() {
                                         colour="black", 
                                         size=10),
                 plot.title = element_text(
-                              face="italic",
+                              face="bold",
                               colour="black",
                               size=11,
                               hjust = 0.5
@@ -243,22 +243,31 @@ g1 <-  corp_bigram_count %>%
   ylab("Frequency") +
   ggtitle("25 most frequent bigrams") +
   ggstyle()
+g1
+
+#bigram
 
 bigram_graph <- corp_bigram %>% 
                 count(word1,word2,sort=TRUE) %>%
                 filter(rank(desc(n)) <= 125) %>%
                 graph_from_data_frame() 
-
-g2 <- ggraph(bigram_graph, layout = "fr") +
+#a <- grid::arrow(type="closed",unit(0.15,"inches"))
+ggraph(bigram_graph, layout = "fr") +
       geom_edge_link(aes(edge_alpha=n),
                   show.legend = FALSE,
                   arrow=a,end_cap=circle(0.07,"inches") ) +
       geom_node_point(color="lightblue",size=5) +
       geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
       theme_graph() +
-      ggstyle() +
-      ggtitle("Connected graph showing the 125 most frequent trigrams")
-grid.arrange(g1,g2,ncol=2)
+      ggtitle("Connected graph showing the 125 most frequents bigrams") +
+      theme(
+        plot.title= element_text(
+          face="bold",
+          size=10,
+          hjust=0.5
+        )
+      )
+      
 ```
 
 ```{r 3-grams}
@@ -288,23 +297,30 @@ g1 <-  corp_trigram_count %>%
                                         face="italic",
                                         colour="black", 
                                         size=8)
-                        )
+)
+g1
+
 trigram_graph <- corp_trigram %>% 
                 count(word1,word2,word3,sort=TRUE) %>%
                 filter(rank(desc(n)) <= 125) %>%
                 graph_from_data_frame() 
-
-g2 <- ggraph(trigram_graph, layout = "fr") +
+#a <- grid::arrow(type="closed",unit(0.15,"inches"))
+ggraph(trigram_graph, layout = "fr") +
       geom_edge_link(aes(edge_alpha=n),
                   show.legend = FALSE,
-                  arrow=a,end_cap=circle(3,"mm") ) +
+                  arrow=a,end_cap=circle(0.07,"inches") ) +
       geom_node_point(color="lightblue",size=5) +
       geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
-      ggtitle("Connected graph showing the 125 most frequent trigrams") +
       theme_graph() +
-      xlab(NULL) +
-      ylab(NULL)
-grid.arrange(g1,g2,ncol=2)
+      ggtitle("Connected graph showing the 125 most frequents trigrams") +
+      theme(
+        plot.title= element_text(
+          face="bold",
+          size=10,
+          hjust=0.5
+        )
+      )
+
 ```
 ```{r graph analysis}
 #bigram
@@ -313,7 +329,7 @@ bigram_graph <- corp_bigram %>%
                 count(word1,word2,sort=TRUE) %>%
                 filter(rank(desc(n)) <= 125) %>%
                 graph_from_data_frame() 
-a <- grid::arrow(type="closed",unit(0.15,"inches"))
+#a <- grid::arrow(type="closed",unit(0.15,"inches"))
 ggraph(bigram_graph, layout = "fr") +
       geom_edge_link(aes(edge_alpha=n),
                   show.legend = FALSE,
@@ -328,7 +344,7 @@ trigram_graph <- corp_trigram %>%
                 count(word1,word2,word3,sort=TRUE) %>%
                 filter(rank(desc(n)) <= 125) %>%
                 graph_from_data_frame() 
-a <- grid::arrow(type="closed",unit(0.15,"inches"))
+#a <- grid::arrow(type="closed",unit(0.15,"inches"))
 ggraph(trigram_graph, layout = "fr") +
       geom_edge_link(aes(edge_alpha=n),
                   show.legend = FALSE,
@@ -338,7 +354,7 @@ ggraph(trigram_graph, layout = "fr") +
       theme_void()
 ```
 ###Disctionary Coverage
-As illustrated in the graph below, based on the corpus containing stop words, it will take a dictionary of ```{r} count(corp_freq[corp_freq$cumsum <=0.8,])``` words to cover 80% of the words in the corpus (blue lines) and a ```{r} count(corp_freq[corp_freq$cumsum <=0.5,])``` words dictionary to cover 50% of the corpus.  
+As illustrated in the graph below, based on the corpus containing stop words, it will take a dictionary of ` r count(corp_freq[corp_freq$cumsum <=0.8,])` words to cover 80% of the words in the corpus (blue lines) and a ` r count(corp_freq[corp_freq$cumsum <=0.5,])` words dictionary to cover 50% of the corpus.  
 ```{r graph for dictionary coverage}
 
 ```
