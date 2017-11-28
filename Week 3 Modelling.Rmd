@@ -1,0 +1,145 @@
+---
+title: 'Capstone Week 3: Modeling'
+author: "JRB"
+date: "November 27, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(cache = TRUE)
+knitr::opts_chunk$set(tidy = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(fig.align = "center")
+  
+library(tidyverse) ##Because the universe is a better place with tidyverse
+library(tidytext)
+library(tm)
+library(ggraph)
+library(igraph)
+library(knitr) #For table formatting
+library(gridExtra)
+library(ggthemes)
+## Formating for plots
+ggstyle <- function() {
+  theme_tufte() +
+  theme(
+                text = element_text(
+                                        face="italic",
+                                        colour="black", 
+                                        size=10),
+                plot.title = element_text(
+                              face="bold",
+                              colour="black",
+                              size=11,
+                              hjust = 0.5
+                )
+                        )
+
+} 
+## Formatting for graphs
+a <- grid::arrow(angle=45,
+                 type="open",
+                 unit(4,"mm"))
+```
+```{r}
+twitter<- readLines("./final/en_US/en_US.twitter.txt")
+twitter_df <- data_frame(corp="twitter",line=1:length(twitter),text=twitter)
+corp <- twitter_df
+## This is is our "profanity" list
+swears <- readLines("./data/profanity.txt")
+## Prepping our list of swear words
+swears <- as_tibble(as.character(swears))
+colnames(swears) <- "word"
+
+```
+```{r}
+#Step 1: subset for twitter
+#corp <-twitter_df
+#corp <- sample_n(corp,20000)
+#Step 2: normalizing case, cleaning twitter artifacts and removing digits
+corp$text <- tolower(corp$text)
+corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
+corp$text <- gsub("@\\w+", "", corp$text) #Remoeve any @
+corp$text <- gsub("[[:digit:]]", "", corp$text) # remove numbers
+
+#Step 3: removing stop words (a, the, etc...) and profanity
+data(stop_words)
+tidy_corp_nostop <- corp %>%
+                unnest_tokens(word,text,token="words") %>%
+                anti_join(swears, by="word") %>%
+                anti_join(stop_words, by="word")
+
+tidy_corp_stop <- corp %>%
+                unnest_tokens(word,text,token="words") %>%
+                anti_join(swears, by="word")
+
+tidy_corp_nostop_summary <- tidy_corp_nostop %>% 
+  group_by(corp) %>%
+  count(word, sort = TRUE) %>%
+  mutate(word = reorder(word, n)) %>%
+  bind_tf_idf(word,corp,n) 
+
+#tidy_corp_nostop_summary <- tidy_corp_nostop_summary %>%  mutate(cumsum=cumsum(n)) %>% mutate(cumsumfreq=cumsum(tf))
+
+tidy_corp_stop_summary <- tidy_corp_stop %>%
+  group_by(corp) %>%
+  count(word, sort = TRUE) %>%
+  mutate(word = reorder(word, n)) %>%
+  bind_tf_idf(word,corp,n)
+```
+```{r 3-grams}
+corp_trigram <- unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=3)
+corp_trigram <- corp_trigram %>%
+          separate(ngram,c("word1","word2","word3"),sep=" ")
+corp_trigram_count <- corp_trigram %>%
+          unite(trigram,word1, word2,word3, sep=" ") %>%
+          count(trigram, sort=TRUE) %>%
+          mutate(orig="twitter") %>%
+          arrange(desc(n))
+corp_trigram_count <- corp_trigram_count %>% 
+                    bind_tf_idf(trigram,orig,n) %>%
+                    mutate(trigram=factor(trigram,levels=trigram))
+
+g1 <-  corp_trigram_count %>% 
+  filter(rank(desc(tf))<= 25) %>%
+  ggplot(aes(reorder(trigram,desc(trigram)),tf)) +
+  geom_point(stat="identity") + 
+  xlab(NULL) +
+  coord_flip()+
+  ylab("Frequency") +
+  ggtitle("25 most frequent trigrams") +
+    theme_minimal() +
+  theme(
+                text = element_text(
+                                        face="italic",
+                                        colour="black", 
+                                        size=8)
+)
+g1
+
+trigram_graph <- corp_trigram %>% 
+                count(word1,word2,word3,sort=TRUE) %>%
+                filter(rank(desc(n)) <= 125) %>%
+                graph_from_data_frame() 
+#a <- grid::arrow(type="closed",unit(0.15,"inches"))
+ggraph(trigram_graph, layout = "fr") +
+      geom_edge_link(aes(edge_alpha=n),
+                  show.legend = FALSE,
+                  arrow=a,end_cap=circle(0.07,"inches") ) +
+      geom_node_point(color="lightblue",size=5) +
+      geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
+      theme_graph() +
+      ggtitle("Connected graph showing the 125 most frequents trigrams") +
+      theme(
+        plot.title= element_text(
+          face="bold",
+          size=10,
+          hjust=0.5
+        )
+      )
+
+

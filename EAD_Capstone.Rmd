@@ -47,7 +47,7 @@ a <- grid::arrow(angle=45,
 ```
 
 ##Introduction
-This report presents a summary of findings from an exploratory analysis of the twitter data files provided for the captsone project. The goal of the exploratory data anlysis is to highlight interesting characteristics of the data that could be used to inform our modelling.
+This report presents a summary of findings from an exploratory analysis of the twitter data files provided for the captsone project. The goal of the exploratory data anlysis is to highlight interesting characteristics of the data that could be used to inform our modelling. The analysis has been performed on a sample of 20,000 lines from the twitter corpus.  
 ##Data Aquistion  
 
 We are downloading and unziping the zip file provided by Coursera. We are also downloading a list of [profanities]("https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en") to be used later to clean up the data set. We then proceed to create a data frame corp, which contains one observation per line of text and each observation as three variables: 
@@ -102,7 +102,7 @@ This should be enough preparation for our exploratory analysis
 ```{r data preparation}
 #Step 1: subset for twitter
 #corp <-twitter_df
-corp <- sample_n(corp,10000)
+corp <- sample_n(corp,20000)
 #Step 2: normalizing case, cleaning twitter artifacts and removing digits
 corp$text <- tolower(corp$text)
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
@@ -214,7 +214,7 @@ wordcloud(corp_freq_nostop$word,freq=corp_freq_nostop$tf,max.words=125,colors=br
 ##Part 2: n-gram analysis
 
 
-###bigrams analysis  
+###Bigrams analysis  
 ```{r 2-grams}
 
 corp_bigram <- unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=2)
