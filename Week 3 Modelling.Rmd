@@ -218,6 +218,37 @@ getMyWord <- function(w1){
 
 ```
 ```{r preparing a trigram model}
+bigram_ref <- corp_bigram_model[,c("bigram","n")]
+colnames(bigram_ref) <- c("bigram","n1")
+corp_trigram_model <-  unnest_tokens(sample_n(corp,1000),ngram,text,token="ngrams",n=3) %>%
+                      count(ngram,sort=TRUE) %>% 
+                      separate(ngram, c("word1","word2","word3"),sep=" ") %>%
+                      mutate(bigram=paste(word1,word2," ")) %>%
+                      mutate(trigram=paste(word1,word2,word3," ")) %>%
+                      full_join(bigram_ref,by="bigram") %>% 
+                      mutate(mle=n/n1)
+trigrams_markov <- corp_trigram_model %>%  
+                  arrange(desc(mle)) %>% 
+                  group_by(bigram) %>% 
+                  top_n(3,mle)
+
 
 ```
+```{r preparing a fourgram model}
+trigram_ref <- corp_trigram_model[,c("trigram","n")]
+colnames(trigram_ref) <- c("trigram","n1")
+corp_fourgram_model <-  unnest_tokens(sample_n(corp,1000),ngram,text,token="ngrams",n=4) %>%
+                      count(ngram,sort=TRUE) %>% 
+                      separate(ngram, c("word1","word2","word3","word4"),sep=" ") %>%
+                      mutate(bigram=paste(word1,word2," ")) %>%
+                      mutate(trigram=paste(word1,word2,word3," ")) %>%
+                      mutate(fourgram=paste(word1,word2,word3,word4," ")) %>%
+                      full_join(trigram_ref,by="trigram") %>% 
+                      mutate(mle=n/n1)
+fourgrams_markov <- corp_fourgram_model %>%  
+                  arrange(desc(mle)) %>% 
+                  group_by(trigram) %>% 
+                  top_n(3,mle)
 
+
+```
