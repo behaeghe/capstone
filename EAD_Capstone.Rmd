@@ -100,11 +100,12 @@ A few simple steps to prepare the data for analysis.
 This should be enough preparation for our exploratory analysis 
 
 ```{r data preparation}
+seed(2017)
 #Step 1: subset for twitter
-#corp <-twitter_df
-corp <- sample_n(corp,20000)
+corp <-twitter_df
+#corp <- sample_n(corp,20000)
 #Step 2: normalizing case, cleaning twitter artifacts and removing digits
-corp$text <- tolower(corp$text)
+#corp$text <- tolower(corp$text) Not needed if using unnest_token
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
 corp$text <- gsub("@\\w+", "", corp$text) #Remoeve any @
 corp$text <- gsub("[[:digit:]]", "", corp$text) # remove numbers

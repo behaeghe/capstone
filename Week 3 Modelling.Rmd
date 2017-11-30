@@ -56,12 +56,12 @@ swears <- as_tibble(as.character(swears))
 colnames(swears) <- "word"
 
 ```
-```{r}
+```{r data aquisition}
 #Step 1: subset for twitter
 #corp <-twitter_df
 #corp <- sample_n(corp,20000)
 #Step 2: normalizing case, cleaning twitter artifacts and removing digits
-corp$text <- tolower(corp$text)
+#corp$text <- tolower(corp$text) Not needed is using unnesttoken
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
 corp$text <- gsub("@\\w+", "", corp$text) #Remoeve any @
 corp$text <- gsub("[[:digit:]]", "", corp$text) # remove numbers
@@ -76,14 +76,13 @@ tidy_corp_nostop <- corp %>%
 tidy_corp_stop <- corp %>%
                 unnest_tokens(word,text,token="words") %>%
                 anti_join(swears, by="word")
-
+#Step 4 creating Document Terms Matrices for unigrams
 tidy_corp_nostop_summary <- tidy_corp_nostop %>% 
   group_by(corp) %>%
   count(word, sort = TRUE) %>%
   mutate(word = reorder(word, n)) %>%
   bind_tf_idf(word,corp,n) 
 
-#tidy_corp_nostop_summary <- tidy_corp_nostop_summary %>%  mutate(cumsum=cumsum(n)) %>% mutate(cumsumfreq=cumsum(tf))
 
 tidy_corp_stop_summary <- tidy_corp_stop %>%
   group_by(corp) %>%
@@ -91,6 +90,60 @@ tidy_corp_stop_summary <- tidy_corp_stop %>%
   mutate(word = reorder(word, n)) %>%
   bind_tf_idf(word,corp,n)
 ```
+```{r 2-grams}
+
+corp_bigram <- unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=2)
+corp_bigram <- corp_bigram %>%
+          separate(ngram,c("word1","word2"),sep=" ")
+#corp_bigram <- corp_bigram %>%
+#              filter(!word1 %in% stop_words$word) %>%
+#              filter(!word2 %in% stop_words$word)
+corp_bigram_count <- corp_bigram %>%
+          unite(bigram,word1, word2, sep=" ") %>%
+          count(bigram, sort=TRUE) %>%
+          mutate(orig="twitter") %>%
+          arrange(desc(n))
+## TO DO: Bigram are factors, need to either make it a string or re-order the factors.
+corp_bigram_count <- corp_bigram_count %>% 
+                    bind_tf_idf(bigram,orig,n) %>%
+                    mutate(bigram=factor(bigram,levels=bigram))
+
+g1 <-  corp_bigram_count %>% 
+  filter(rank(desc(tf))<= 25) %>%
+  ggplot(aes(reorder(bigram,desc(bigram)),tf)) +
+  geom_point(stat="identity") + 
+  xlab(NULL) +
+  coord_flip()+
+  ylab("Frequency") +
+  ggtitle("25 most frequent bigrams") +
+  ggstyle()
+g1
+
+#bigram
+
+bigram_graph <- corp_bigram %>% 
+                count(word1,word2,sort=TRUE) %>%
+                filter(rank(desc(n)) <= 125) %>%
+                graph_from_data_frame() 
+#a <- grid::arrow(type="closed",unit(0.15,"inches"))
+ggraph(bigram_graph, layout = "fr") +
+      geom_edge_link(aes(edge_alpha=n),
+                  show.legend = FALSE,
+                  arrow=a,end_cap=circle(0.07,"inches") ) +
+      geom_node_point(color="lightblue",size=5) +
+      geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
+      theme_graph() +
+      ggtitle("Connected graph showing the 125 most frequents bigrams") +
+      theme(
+        plot.title= element_text(
+          face="bold",
+          size=10,
+          hjust=0.5
+        )
+      )
+      
+```
+
 ```{r 3-grams}
 corp_trigram <- unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=3)
 corp_trigram <- corp_trigram %>%
@@ -141,5 +194,30 @@ ggraph(trigram_graph, layout = "fr") +
           hjust=0.5
         )
       )
+```
 
+```{r preparing the bigram model}
+unigram_ref <- tidy_corp_stop_summary[,c(2,3)]
+colnames(unigram_ref) <- c("word1","n1")
+# We build a list of bigrams and evalute their MLE using Markov Principle
+corp_bigram_model <-  unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=2) %>%
+                      count(ngram,sort=TRUE) %>% 
+                      separate(ngram, c("word1","word2"),sep=" ") %>%
+                      mutate(bigram=paste(word1,word2," ")) %>%
+                      full_join(unigram_ref,by="word1") %>% 
+                      mutate(mle=n/n1)
+#We reduce our model size to the top 3 of each bigram by mle
+bigrams_markov <- corp_bigram_model %>%  
+                  arrange(desc(mle)) %>% 
+                  group_by(word1) %>% 
+                  top_n(3,mle)
+model_graph <- graph_from_data_frame(corp_bigram_model)
+getMyWord <- function(w1){
+  bigrams_markov[bigrams_markov$word1==w1,c("word2")]
+}
+
+```
+```{r preparing a trigram model}
+
+```
 
