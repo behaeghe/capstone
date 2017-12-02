@@ -17,33 +17,6 @@ knitr::opts_chunk$set(fig.align = "center")
   
 library(tidyverse) ##Because the universe is a better place with tidyverse
 library(tidytext)
-library(tm)
-library(ggraph)
-library(igraph)
-library(knitr) #For table formatting
-library(gridExtra)
-library(ggthemes)
-## Formating for plots
-ggstyle <- function() {
-  theme_tufte() +
-  theme(
-                text = element_text(
-                                        face="italic",
-                                        colour="black", 
-                                        size=10),
-                plot.title = element_text(
-                              face="bold",
-                              colour="black",
-                              size=11,
-                              hjust = 0.5
-                )
-                        )
-
-} 
-## Formatting for graphs
-a <- grid::arrow(angle=45,
-                 type="open",
-                 unit(4,"mm"))
 ```
 ```{r}
 twitter<- readLines("./final/en_US/en_US.twitter.txt")
@@ -54,6 +27,7 @@ swears <- readLines("./data/profanity.txt")
 ## Prepping our list of swear words
 swears <- as_tibble(as.character(swears))
 colnames(swears) <- "word"
+corp<- sample_n(corp,1000)
 
 ```
 ```{r data aquisition}
@@ -65,7 +39,8 @@ colnames(swears) <- "word"
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
 corp$text <- gsub("@\\w+", "", corp$text) #Remoeve any @
 corp$text <- gsub("[[:digit:]]", "", corp$text) # remove numbers
-
+```
+```{r unigram processing, eval=FALSE, include=FALSE}
 #Step 3: removing stop words (a, the, etc...) and profanity
 data(stop_words)
 tidy_corp_nostop <- corp %>%
@@ -90,7 +65,7 @@ tidy_corp_stop_summary <- tidy_corp_stop %>%
   mutate(word = reorder(word, n)) %>%
   bind_tf_idf(word,corp,n)
 ```
-```{r 2-grams}
+```{r 2-grams, eval=FALSE, include=FALSE}
 
 corp_bigram <- unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=2)
 corp_bigram <- corp_bigram %>%
@@ -144,7 +119,7 @@ ggraph(bigram_graph, layout = "fr") +
       
 ```
 
-```{r 3-grams}
+```{r 3-grams, eval=FALSE, include=FALSE}
 corp_trigram <- unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=3)
 corp_trigram <- corp_trigram %>%
           separate(ngram,c("word1","word2","word3"),sep=" ")
@@ -197,10 +172,11 @@ ggraph(trigram_graph, layout = "fr") +
 ```
 
 ```{r preparing the bigram model}
-unigram_ref <- tidy_corp_stop_summary[,c(2,3)]
+unigram_ref <- unnest_tokens(corp,word,text,token="words") %>% 
+              count(word,sort=TRUE) 
 colnames(unigram_ref) <- c("word1","n1")
 # We build a list of bigrams and evalute their MLE using Markov Principle
-corp_bigram_model <-  unnest_tokens(corp[corp$corp=="twitter",],ngram,text,token="ngrams",n=2) %>%
+corp_bigram_model <-  unnest_tokens(corp,ngram,text,token="ngrams",n=2) %>%
                       count(ngram,sort=TRUE) %>% 
                       separate(ngram, c("word1","word2"),sep=" ") %>%
                       mutate(bigram=paste(word1,word2," ")) %>%
@@ -220,7 +196,7 @@ getMyWord <- function(w1){
 ```{r preparing a trigram model}
 bigram_ref <- corp_bigram_model[,c("bigram","n")]
 colnames(bigram_ref) <- c("bigram","n1")
-corp_trigram_model <-  unnest_tokens(sample_n(corp,1000),ngram,text,token="ngrams",n=3) %>%
+corp_trigram_model <-  unnest_tokens(corp,ngram,text,token="ngrams",n=3) %>%
                       count(ngram,sort=TRUE) %>% 
                       separate(ngram, c("word1","word2","word3"),sep=" ") %>%
                       mutate(bigram=paste(word1,word2," ")) %>%
@@ -237,17 +213,18 @@ trigrams_markov <- corp_trigram_model %>%
 ```{r preparing a fourgram model}
 trigram_ref <- corp_trigram_model[,c("trigram","n")]
 colnames(trigram_ref) <- c("trigram","n1")
-corp_fourgram_model <-  unnest_tokens(sample_n(corp,1000),ngram,text,token="ngrams",n=4) %>%
-                      count(ngram,sort=TRUE) %>% 
-                      separate(ngram, c("word1","word2","word3","word4"),sep=" ") %>%
-                      mutate(bigram=paste(word1,word2," ")) %>%
-                      mutate(trigram=paste(word1,word2,word3," ")) %>%
-                      mutate(fourgram=paste(word1,word2,word3,word4," ")) %>%
-                      full_join(trigram_ref,by="trigram") %>% 
-                      mutate(mle=n/n1)
+corp_fourgram_model <-  unnest_tokens(corp,ngram,text,token="ngrams",n=4) %>%
+count(ngram,sort=TRUE) %>%
+separate(ngram, c("word1","word2","word3","word4"),sep=" ") %>%
+mutate(bigram=paste(word1,word2," ")) %>%
+mutate(trigram=paste(word1,word2,word3," ")) %>%
+mutate(fourgram=paste(word1,word2,word3,word4," ")) %>%
+full_join(trigram_ref,by="trigram")
+
+                      
 fourgrams_markov <- corp_fourgram_model %>%  
                   arrange(desc(mle)) %>% 
-                  group_by(trigram) %>% 
+                  group_by(fourgram) %>% 
                   top_n(3,mle)
 
 
