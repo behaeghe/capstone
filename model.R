@@ -11,7 +11,7 @@ dev_corp  <- sample_n(corp,200)
 train_corp <- sample_n(corp,max(corp$line)*0.8)
 
 #Today we are working on DEV
-corp <- train_corp  
+corp <- dev_corp  
 
 ##Let's clean up our data now...
 corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
@@ -67,4 +67,6 @@ fourgrams <- unnest_tokens(corp,fourgram,text,token="ngrams",n=4) %>%
   mutate(mle = n/trigram_count) %>%
   rename(fourgram_count = n) %>%
   select(c("fourgram","trigram","fourgram_count","mle"))
+
+
 
