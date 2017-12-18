@@ -12,8 +12,8 @@ library(tidytext)
 #' @examples
 load_corpus <- function(source,name="twitter") {
   t<- readLines(source)
-  t_df <- data_frame(corp=name,line=1:length(t),text=t)
-  t_df
+  t_df <- data_frame(corp=name,line=1:length(t),text=t,sringasfactors=FALSE)
+  retur t_df
 }
 
 clean_corpus <- function(corp) {
@@ -23,25 +23,31 @@ clean_corpus <- function(corp) {
   corp
 }
 
-train_models <- function(corp,save_to=".") {
-  #Get the unigrams count
-  #Get the bigrams count
-  #Get the trigrams count
+get_counts <- function(corp,save_to=".") {
   unigram_ref <- unnest_tokens(corp,word,text,token="words") %>% 
-    count(word,sort=TRUE) 
-  unigram_ref<- unigram_ref[,c(2,3)]
-  colnames(unigram_ref) <- c("word1","n1")
+  count(word,sort=TRUE) 
+ 
   # We build a list of bigrams and evalute their MLE using Markov Principle
-  corp_bigram_model <-  unnest_tokens(corp,ngram,text,token="ngrams",n=2) %>%
+  bigram_ref <-  unnest_tokens(corp,ngram,text,token="ngrams",n=2) %>%
     count(ngram,sort=TRUE) %>% 
     separate(ngram, c("word1","word2"),sep=" ") %>%
-    mutate(bigram=paste(word1,word2," ")) %>%
-    full_join(unigram_ref,by="word1") %>% 
-    mutate(mle=n/n1)
-  #We reduce our model size to the top 3 of each bigram by mle
-  bigrams_markov <- corp_bigram_model %>%  
-    arrange(desc(mle)) %>% 
-    group_by(word1) %>% 
-    top_n(3,mle)
-  saveRDS()
+    mutate(bigram=paste(word1,word2," ")) 
+  
+  trigram_ref <-  unnest_tokens(corp,ngram,text,token="ngrams",n=3) %>%
+    count(ngram,sort=TRUE) %>% 
+    separate(ngram, c("word1","word2","word3"),sep=" ") %>%
+    mutate(bigram=paste(word1,word2,word3," ")) 
+  
+  fourgram_ref <- unnest_tokens(corp,ngram,text,token="ngrams",n=4) %>%
+    count(ngram,sort=TRUE) %>% 
+    separate(ngram, c("word1","word2","word3","word4"),sep=" ") %>%
+    mutate(bigram=paste(word1,word2,word3,word4," ")) 
+  
 }
+get_mle <- function(ref,ngram){
+    #get the count from reference (c(wi-1))
+    ref
+}
+
+mle <- function(cwi_1,cngram) {cngram/cwi_1}
+

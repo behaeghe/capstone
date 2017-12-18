@@ -2,8 +2,9 @@ library(tidyverse)
 library(tidytext)
 #Creating NGRAMS Model
 ## Loading the data and creating the test,dev,train corpus
-twitter<- readLines("./final/en_US/en_US.twitter.txt")
-twitter_df <- data.frame(corp="twitter",line=1:length(twitter),text=twitter)
+twitterfile <- file("./final/en_US/en_US.twitter.txt")
+twitter=readLines(twitterfile)
+twitter_df <- data.frame(corp="twitter",line=1:length(twitter),text=twitter,stringsAsFactors=FALSE)
 corp <- twitter_df
 set.seed(2017)
 test_corp <- sample_n(corp,max(corp$line)*0.1)
@@ -14,20 +15,23 @@ train_corp <- sample_n(corp,max(corp$line)*0.8)
 corp <- dev_corp  
 
 ##Let's clean up our data now...
-corp$text <- gsub("rt","",corp$text) #Remove rt, retweet
-corp$text <- gsub("@\\w+", "", corp$text) #Remoeve any @
-corp$text <- gsub("[[:digit:]]", "", corp$text) # remove numbers
+corp$text <- clean(corp$text)
 #Add a regexp for punctuations and non ASCII characters here
 ##Get a list of swears and naughty words
 swears <- readLines("./data/profanity.txt")
 swears <- as_tibble(as.character(swears))
-colnames(swears) <- "word1"
+colnames(swears) <- "word"
 
 ##Unigrams
 unigrams <- corp %>%
-  unnest_tokens(word1,text,token="words") %>%
-  anti_join(swears, by="word1") %>%
-  count(word1,sort=TRUE)
+  unnest_tokens(word,text,token="words") %>%
+  anti_join(swears, by="word") %>%
+  count(word,sort=TRUE) %>%
+  mutate(total = sum(n)) %>%
+  mutate(tf = n/total) %>%
+  arrange(desc(tf)) %>%
+  mutate(cumsum=cumsum(tf)) %>%
+  filter((cumsum)<=0.8)
 ## bigrams
 bigrams <- unnest_tokens(corp,bigram,text,token="ngrams",n=2) %>%
 separate(bigram,c("word1","word2"),sep=" ",remove=FALSE) %>%
