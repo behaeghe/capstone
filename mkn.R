@@ -92,7 +92,7 @@ finalize.mkn.training <- function(obj) {
     p1 <- 1 / (obj$frequencies[[2]]$unique_entries - 1);
 
     # this is it: the big function
-    p <- nfunction(tokens) {
+    p <- function(tokens) {
         pmkn <- vector("list", obj$order);
 
         # unigrams is a special case
